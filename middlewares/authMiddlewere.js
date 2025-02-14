@@ -2,19 +2,24 @@ const jwt = require('jsonwebtoken');
 const { isTokenBlacklisted } = require('../controllers/userController'); // Sesuaikan nama fungsi
 
 exports.authMiddleware = (req, res, next) => {
-  const token = req.header('Authorization');
-  if (!token) return res.status(401).json({ message: 'No token, authorization denied' });
+  const authHeader = req.header('Authorization');
+  const token = authHeader && authHeader.startsWith('Bearer ') ? authHeader.split(' ')[1] : null;
+  
+  if (!token) {
+    return res.status(401).json({ message: 'No token, authorization denied' });
+  }
 
-  // Periksa apakah token di-blacklist
   if (isTokenBlacklisted(token)) {
     return res.status(401).json({ message: 'Token is blacklisted' });
   }
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET); // Verifikasi token
-    req.user = decoded; // Simpan payload yang terverifikasi
-    next(); // Lanjutkan ke middleware berikutnya atau handler
+    const decoded = jwt.verify(token, "210906nzlh"); // Pastikan kunci sesuai
+    req.user = decoded;
+    console.log('User data:', req.user); 
+    next();
   } catch (err) {
-    res.status(401).json({ message: 'Token is not valid' });
+    console.error('JWT Error:', err.message);
+    return res.status(401).json({ message: 'Token is not valid' });
   }
 };

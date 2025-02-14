@@ -1,10 +1,13 @@
 const express = require('express');
-const upload = require('../config/multerConfig'); // Path ke konfigurasi Multer
-const fotoController = require('../controllers/fotoController'); // Path ke controller
+const upload = require('../config/multerConfig');
+const fotoController = require('../controllers/fotoController');
 
 const router = express.Router();
 
-// Rute untuk upload foto
+// Route untuk upload foto
 router.post('/uploadFoto', upload.single('image'), fotoController.uploadFoto);
+
+// Route untuk delete foto
+router.delete('/:id', fotoController.deleteFoto);
 
 module.exports = router;

@@ -1,69 +1,73 @@
 const User = require('../models/User');
 const jwt = require('jsonwebtoken');
+const bcrypt = require('bcryptjs'); 
 
+// Register User
 exports.registerUser = async (req, res) => {
-    try {
-        console.log('Request body:', req.body);  // Untuk memeriksa isi req.body
-        const { username, password, email, namaLengkap, alamat } = req.body;
-
-        const user = new User({ username, password, email, namaLengkap, alamat });
-        await user.save();
-        res.status(201).json(user);
-    } catch (error) {
-        res.status(500).json({ message: error.message });
-    }
-};
-
-exports.getUsers = async (req, res) => {
-    try {
-        const users = await User.find();
-        res.status(200).json(users);
-    } catch (error) {
-        res.status(500).json({ message: error.message });
-    }
-};
-
-
-
-exports.loginUser = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { username, password, email, namaLengkap, alamat } = req.body;
 
-    console.log('JWT_SECRET:', process.env.JWT_SECRET);
+    // Hash password
+    const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Cari user berdasarkan email
-    const user = await User.findOne({ email });
-    if (!user) {
-      return res.status(404).json({ message: 'User not found' });
-    }
-
-    // Bandingkan password (harus di-hash untuk keamanan, tetapi di sini plain text sesuai kode Anda)
-    if (password !== user.password) {
-      return res.status(401).json({ message: 'Invalid password' });
-    }
-
-    // Buat token JWT
-    const token = jwt.sign(
-      { id: user._id, email: user.email }, // Payload
-      process.env.JWT_SECRET, // Secret Key
-      { expiresIn: '1h' } // Masa berlaku token
-    );
-
-    res.status(200).json({ message: 'Login successful', token });
+    const user = new User({ username, password: hashedPassword, email, namaLengkap, alamat });
+    await user.save();
+    res.status(201).json(user);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
-// Simpan token blacklist dalam memori sederhana untuk contoh ini
+// Get All Users
+exports.getUsers = async (req, res) => {
+  try {
+    const users = await User.find();
+    res.status(200).json(users);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Login User
+exports.loginUser = async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Compare password
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+    if (!isPasswordValid) {
+      return res.status(401).json({ message: 'Invalid password' });
+    }
+
+    const token = jwt.sign(
+      { id: user._id, email: user.email },
+      process.env.JWT_SECRET,
+      { expiresIn: '1h' }
+    );
+
+    
+
+    res.status(200).json({ message: 'Login successful', token,user });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Token Blacklist Storage (for demo purposes)
 let tokenBlacklist = [];
 
+// Logout User
 exports.logoutUser = async (req, res) => {
   try {
-    const token = req.header('Authorization');
-    if (!token) return res.status(400).json({ message: 'No token provided' });
+    const authHeader = req.header('Authorization');
+    if (!authHeader) return res.status(400).json({ message: 'No token provided' });
 
-    // Tambahkan token ke daftar blacklist
+    const token = authHeader.split(' ')[1]; // Extract Bearer token
     tokenBlacklist.push(token);
 
     res.status(200).json({ message: 'Logout successful' });
@@ -72,11 +76,7 @@ exports.logoutUser = async (req, res) => {
   }
 };
 
-// Middleware untuk memeriksa token blacklist
-exports.checkToken = (req, res, next) => {
-  const token = req.header('Authorization');
-  if (tokenBlacklist.includes(token)) {
-    return res.status(401).json({ message: 'Token is blacklisted' });
-  }
-  next();
+// Middleware to Check if Token is Blacklisted
+exports.isTokenBlacklisted = (token) => {
+  return tokenBlacklist.includes(token);
 };

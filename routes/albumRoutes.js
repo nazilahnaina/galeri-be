@@ -1,12 +1,12 @@
 const express = require('express');
-const { createAlbum, getAlbums } = require('../controllers/albumController');
+const { createAlbum, getAlbums, deleteAlbum, getAlbumById} = require('../controllers/albumController');
 const router = express.Router();
-const { authMiddleware } = require('../middlewares/authMiddlewere');
+const { authMiddleware } = require('../middlewares/authMiddlewere');  // Pastikan nama file dan fungsi benar
 
-router.post('/upload', authMiddleware, createAlbum);
-
-
-router.post('/upload', createAlbum);
+// Lindungi route dengan middleware autentikasi
+router.post('/upload', authMiddleware, createAlbum);  // Mengharuskan login untuk membuat album
 router.get('/', getAlbums);
+router.get('/:id', getAlbumById);
+router.delete('/:id', authMiddleware, deleteAlbum); // hapus
 
-module.exports = router;                         
+module.exports = router;
